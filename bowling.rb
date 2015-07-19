@@ -9,7 +9,7 @@ class Bowling
 
   def initialize(hits = [])
     @hits = (hits.is_a?(Array) ? hits : [])
-    @frames ||= []
+    @frames ||= (1..10).map{ |i| Frame.new number: i }
   end
 
   def hits=(input)
@@ -17,10 +17,9 @@ class Bowling
     raise ArgumentError, '[Error] Incorrect format.'    unless input =~ /^\s*(10|[0-9])(\s*,\s*(10|[0-9]))*\s*$/
     raise ArgumentError, '[Error] More than 21 throws.' if input.scan(/,/).count > 20
 
-    @frames.clear
-    @hits.clear
+    reset
     @hits = input.gsub(/\s+/, '').split(',').map(&:to_i) || []
-    analyze
+    calculate
   end
 
   def hits
@@ -28,69 +27,60 @@ class Bowling
   end
 
   def score
-    @frames.first(10).map(&:score).sum
+    @frames.map{ |f| f.score.to_i }.sum
   end
 
   def breakdown
-    table = Terminal::Table.new title: 'Bowling', headings: ['Frame', 'First Throw', 'Second Throw', 'Score', 'Running Total'] do |t|
+    table = Terminal::Table.new title: 'Bowling', headings: ['Frame', 'First Throw', 'Second Throw', 'Extra Throw', 'Score', 'Running Total'] do |t|
       running_total = 0
       @frames.each_with_index do |frame, index|
         first_throw = (frame.strike? ? 'X' : frame.first_throw)
         second_throw = (frame.spare? ? '/' : frame.second_throw)
-        running_total += frame.score
+        extra_throw = (frame.number == 10 ? frame.extra_throw : '-')
+        running_total += frame.score.to_i
 
-        t.add_row [index + 1, first_throw, second_throw, frame.score, running_total].map{ |entity| Paint[entity, :yellow] }
+        t.add_row [index + 1, first_throw, second_throw, extra_throw, frame.score, (frame.score.blank? ? nil : running_total)].map{ |entity| Paint[entity, :yellow] }
         t.add_separator
       end
-      if @frames.size <= 10 # print un-finish frames
-        frames_to_finish = if @frames.size == 10
-                             case
-                             when @frames[9].strike? then 12
-                             when @frames[9].spare?  then 11
-                             end
-                           else 10
-                           end
-        (frames_to_finish - @frames.size).times do |index|
-          t.add_row [@frames.size + 1 + index, nil, nil, nil, nil].map{ |entity| Paint[entity, :yellow] }
-          t.add_separator
-        end
-      end
-      t.add_row [nil, nil, nil, 'Total', score].map{ |entity| Paint[entity, :green] }
+      t.add_row [nil, nil, nil, nil, 'Total', score].map{ |entity| Paint[entity, :green] }
     end
     puts table
   end
 
   private
 
-  def analyze
-    pair = []
-    @hits.each_with_index do |h, index|
-      next_throw = @hits[index + 1] || 0
-      next_next_throw = @hits[index + 2] || 0
+  def reset
+    @frames.clear
+    @frames = (1..10).map{ |i| Frame.new number: i }
+    @hits.clear
+  end
 
-      if pair.empty? && h == 10
-        @frames.push Frame.new(
-                       first_throw: h,
-                       score:       (h + next_throw + next_next_throw)
-                     )
-      else
-        pair.push h
-        if pair.size == 2 || (index == @hits.size - 1)
-          @frames.push Frame.new(
-                         first_throw:  pair[0],
-                         second_throw: pair[1],
-                         score:        (pair.sum + (pair.sum == 10 ? next_throw : 0))
-                       )
-          pair.clear
-        end
+  def calculate
+    hit_index = 0
+    @frames.sort{ |x, y| x.number <=> y.number }.each do |frame|
+      break if hit_index > @hits.size
+
+      frame.first_throw = @hits[hit_index]
+      hit_index += 1
+      if !frame.strike? || frame.number == 10
+        frame.second_throw = @hits[hit_index]
+        hit_index += 1
+      end
+      frame.extra_throw = @hits[hit_index] if frame.number == 10 && !@hits[hit_index].nil?
+
+      frame.score = frame.first_throw.to_i + frame.second_throw.to_i + frame.extra_throw.to_i
+      unless frame.number == 10
+        next_throw = @hits[hit_index] || 0
+        next_next_throw = @hits[hit_index + 1] || 0
+        frame.score += next_throw + next_next_throw if frame.strike? # strike bonus
+        frame.score += next_throw if frame.spare? # spare bonus
       end
     end
-    (@frames - @frames.first(10)).each{ |frame| frame.score = 0 } # clear score if it is not the first 10 frames
   end
 end
 
 class Frame
-  attr_accessor :first_throw, :second_throw, :score
+  attr_accessor :number, :first_throw, :second_throw, :extra_throw, :score
 
   def initialize(attrs = {})
     attrs.each{ |k, v| instance_variable_set("@#{k}", v) }
