@@ -39,7 +39,7 @@ class Bowling
         extra_throw = (frame.number == 10 ? frame.extra_throw : '-')
         running_total += frame.score.to_i
 
-        t.add_row [index + 1, first_throw, second_throw, extra_throw, frame.score, (frame.score.blank? ? nil : running_total)].map{ |entity| Paint[entity, :yellow] }
+        t.add_row [index + 1, first_throw, second_throw, extra_throw, frame.score, (frame.score.nil? ? nil : running_total)].map{ |entity| Paint[entity, :yellow] }
         t.add_separator
       end
       t.add_row [nil, nil, nil, nil, 'Total', score].map{ |entity| Paint[entity, :green] }
@@ -58,7 +58,7 @@ class Bowling
   def calculate
     hit_index = 0
     @frames.sort{ |x, y| x.number <=> y.number }.each do |frame|
-      break if hit_index > @hits.size
+      break if hit_index > @hits.size - 1
 
       frame.first_throw = @hits[hit_index]
       hit_index += 1
