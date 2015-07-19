@@ -35,14 +35,8 @@ class Bowling
     table = Terminal::Table.new title: 'Bowling', headings: ['Frame', 'First Throw', 'Second Throw', 'Score', 'Running Total'] do |t|
       running_total = 0
       @frames.each_with_index do |frame, index|
-        first_throw = (frame.first_throw == 10 ? 'X' : frame.first_throw)
-        second_throw = if !frame.second_throw.nil?
-                         case
-                         when frame.second_throw == 10                     then 'X'
-                         when frame.first_throw + frame.second_throw == 10 then '/'
-                         else frame.second_throw
-                         end
-                       end
+        first_throw = (frame.strike? ? 'X' : frame.first_throw)
+        second_throw = (frame.spare? ? '/' : frame.second_throw)
         running_total += frame.score
 
         t.add_row [index + 1, first_throw, second_throw, frame.score, running_total].map{ |entity| Paint[entity, :yellow] }
@@ -51,8 +45,8 @@ class Bowling
       if @frames.size <= 10 # print un-finish frames
         frames_to_finish = if @frames.size == 10
                              case
-                             when @frames[9].first_throw == 10 || @frames[9].second_throw == 10 then 12
-                             when @frames[9].first_throw + @frames[9].second_throw == 10        then 11
+                             when @frames[9].strike? then 12
+                             when @frames[9].spare?  then 11
                              end
                            else 10
                            end
@@ -64,7 +58,6 @@ class Bowling
       t.add_row [nil, nil, nil, 'Total', score].map{ |entity| Paint[entity, :green] }
     end
     puts table
-    nil
   end
 
   private
@@ -86,7 +79,7 @@ class Bowling
           @frames.push Frame.new(
                          first_throw:  pair[0],
                          second_throw: pair[1],
-                         score:        (pair.sum + (pair.sum == 10 ? next_throw + (pair.include?(10) ? next_next_throw : 0) : 0))
+                         score:        (pair.sum + (pair.sum == 10 ? next_throw : 0))
                        )
           pair.clear
         end
@@ -101,5 +94,13 @@ class Frame
 
   def initialize(attrs = {})
     attrs.each{ |k, v| instance_variable_set("@#{k}", v) }
+  end
+
+  def strike?
+    first_throw == 10
+  end
+
+  def spare?
+    first_throw != 10 && (first_throw.to_i + second_throw.to_i) == 10
   end
 end

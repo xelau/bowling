@@ -14,4 +14,25 @@ describe Frame do
   it "should respond to score" do
     expect(frame).to respond_to(:score)
   end
+
+  it "should able to determine strike" do
+    expect(frame.strike?).to be_falsey
+    frame.first_throw = 10
+    expect(frame.strike?).to be_truthy
+  end
+
+  it "should able to determine spare" do
+    expect(frame.spare?).to be_falsey
+
+    frame.first_throw = 10
+    expect(frame.spare?).to be_falsey
+
+    frame.first_throw = 3
+    frame.second_throw = 7
+    expect(frame.spare?).to be_truthy
+
+    frame.first_throw = 0
+    frame.second_throw = 10
+    expect(frame.spare?).to be_truthy
+  end
 end

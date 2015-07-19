@@ -41,6 +41,13 @@ describe Bowling do
       expect(bowling.score).to eq(48)
       bowling.hits = '10,0,0,9,1,0,0,8,2,0,0,7,3,0,0,6,4,0,0'
       expect(bowling.score).to eq(50)
+      bowling.hits = '5,4,6,2,10,3,4,0,10,2,3'
+      expect(bowling.score).to eq(58)
+    end
+
+    it "should return breakdown" do
+      bowling.hits = '5,4,6,2,10,3,4,0,10,2,3'
+      expect{ bowling.breakdown }.to output.to_stdout
     end
   end
 
